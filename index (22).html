@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>VCK Avatar Editor</title>
+<style>
+  :root{
+    --bg:#15171c; --bg2:#1c1f26; --panel:#20232b; --panel2:#262a33;
+    --border:#333846; --text:#e8eaf0; --text-dim:#9aa0ae; --accent:#5b8cff;
+    --accent2:#7aa2ff; --danger:#e5636a; --good:#4cc38a;
+    --shadow: 0 4px 16px rgba(0,0,0,.35);
+  }
+  html.light{
+    --bg:#f2f3f6; --bg2:#ffffff; --panel:#ffffff; --panel2:#eef0f4;
+    --border:#dbdee5; --text:#1c1e24; --text-dim:#5b616e; --accent:#3563e9; --accent2:#3563e9;
+    --danger:#c8383f; --good:#1f9d63;
+    --shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden;}
+  button, input, select{font-family:inherit;}
+  #app{display:flex;flex-direction:column;height:100%;}
+
+  header{
+    display:flex;align-items:center;gap:10px;padding:8px 14px;
+    background:var(--bg2);border-bottom:1px solid var(--border);flex:0 0 auto;
+    z-index:20;
+  }
+  header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px;white-space:nowrap;}
+  header .spacer{flex:1;}
+  .iconbtn{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;
+  }
+  .iconbtn:hover{border-color:var(--accent);}
+  .pillbtn{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:7px 12px;border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:600;
+    white-space:nowrap;
+  }
+  .pillbtn:hover{border-color:var(--accent);}
+  .pillbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .pillbtn.primary:hover{background:var(--accent2);}
+  .pillbtn:disabled{opacity:.4;cursor:default;}
+
+  #mainRow{flex:1;display:flex;min-height:0;position:relative;}
+
+  #leftPanel, #rightPanel{
+    background:var(--panel);border-right:1px solid var(--border);
+    width:250px;flex:0 0 auto;overflow-y:auto;padding:12px;
+  }
+  #rightPanel{border-right:none;border-left:1px solid var(--border);width:340px;display:flex;flex-direction:column;}
+
+  #viewportWrap{flex:1;position:relative;min-width:0;
+    background:linear-gradient(180deg, #bdeafb 0%, #e6f7ff 60%, #f2fbff 100%);}
+  #canvasHost{width:100%;height:100%;}
+  #canvasHost canvas{display:block;touch-action:none;cursor:crosshair;}
+
+  .section{margin-bottom:16px;}
+  .section h2{
+    font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);
+    margin:0 0 8px 0;font-weight:700;
+  }
+  .row{display:flex;gap:6px;flex-wrap:wrap;}
+  .toolgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .toolbtn{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:9px 6px;border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .toolbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .toolbtn:hover:not(.active){border-color:var(--accent);}
+
+  .brushRow{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .brushRow input[type=range]{flex:1;accent-color:var(--accent);}
+  .brushVal{width:22px;text-align:center;font-weight:700;font-size:13px;}
+
+  label.toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;
+    cursor:pointer;font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  label.toggle input{accent-color:var(--accent);width:16px;height:16px;}
+
+  .swatchgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+  .swatch{
+    width:100%;aspect-ratio:1/1;border-radius:7px;border:2px solid var(--border);cursor:pointer;
+    position:relative;
+  }
+  .swatch.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset, 0 0 8px var(--accent);}
+  .swatchAddRow{display:flex;gap:6px;margin-top:8px;align-items:center;}
+  .swatchAddRow input[type=color]{width:38px;height:32px;border:1px solid var(--border);border-radius:7px;
+    background:none;padding:0;cursor:pointer;}
+
+  .checkline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-dim);margin-bottom:6px;}
+
+  .sizeRow{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .sizeRow .sizeLabel{width:52px;font-size:12px;font-weight:600;flex:0 0 auto;}
+  .sizeRow input[type=number]{
+    width:0;flex:1;min-width:0;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:5px 3px;font-size:12px;text-align:center;
+  }
+  .checkline input{accent-color:var(--accent);}
+
+  #jsonHead{padding:12px 12px 6px;flex:0 0 auto;}
+  #jsonArea{
+    flex:1;width:100%;resize:none;background:var(--bg2);color:var(--text);
+    border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;
+    padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
+    line-height:1.45;outline:none;
+  }
+  #jsonWrap{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 12px 12px;}
+  #jsonToolbar{display:flex;gap:6px;padding:0 12px;flex:0 0 auto;margin-bottom:2px;}
+
+  #statusBar{
+    position:absolute;left:10px;bottom:10px;right:10px;background:var(--panel);border:1px solid var(--border);
+    padding:6px 10px;border-radius:8px;font-size:11.5px;color:var(--text-dim);box-shadow:var(--shadow);
+    pointer-events:none;max-width:520px;
+  }
+
+  input[type=file]{display:none;}
+
+  /* mobile */
+  #panelToggle{display:none;}
+  @media (max-width: 900px){
+    header h1{font-size:13px;}
+    #loadedLabel{display:none;}
+    #leftPanel, #rightPanel{
+      position:absolute;top:0;bottom:0;z-index:15;box-shadow:var(--shadow);
+      transform:translateX(-105%);transition:transform .2s ease;
+    }
+    #rightPanel{right:0;left:auto;transform:translateX(105%);width:88vw;max-width:380px;}
+    #leftPanel{left:0;width:80vw;max-width:300px;}
+    #leftPanel.open{transform:translateX(0);}
+    #rightPanel.open{transform:translateX(0);}
+    #panelToggle{display:flex;}
+    #statusBar{font-size:10.5px;padding:5px 8px;}
+  }
+  #scrim{display:none;position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:14;}
+  #scrim.show{display:block;}
+
+  #fatalError{
+    display:none;position:fixed;inset:0;z-index:999;background:#1a0d0d;color:#ffd7d7;
+    padding:24px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;line-height:1.6;overflow:auto;white-space:pre-wrap;
+  }
+  #fatalError.show{display:block;}
+  #fatalError h2{color:#ff8a8a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin-top:0;}
+  #fatalError .hint{color:#ffb3b3;margin-top:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}
+
+  #debugPanel{
+    position:absolute;left:10px;top:10px;max-width:340px;background:rgba(10,15,25,.88);color:#c8f7c8;
+    border:1px solid #2a5a3a;border-radius:8px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10.5px;line-height:1.5;pointer-events:none;z-index:5;max-height:40vh;overflow-y:auto;
+  }
+  #debugPanel b{color:#8be08b;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;}
+  #debugLines div{white-space:pre-wrap;word-break:break-word;}
+  #debugLines div.err{color:#ff9a9a;}
+  #debugLines div.ok{color:#8be08b;}
+</style>
+</head>
+<body>
+<div id="fatalError">
+  <h2>⚠️ Something failed to load or run</h2>
+  <div id="fatalErrorMsg"></div>
+  <div class="hint">This is the real error message — screenshot or copy this and send it back so it can be fixed. Common causes: no internet connection, an ad-blocker/extension blocking cdn.jsdelivr.net, or a browser that's blocked WebGL.</div>
+</div>
+<script>
+  // Installed first, before anything else, so it can catch script-load
+  // failures (e.g. the Three.js CDN being blocked) as well as runtime errors.
+  window.addEventListener('error', function(e){
+    var box = document.getElementById('fatalError');
+    var msg = document.getElementById('fatalErrorMsg');
+    if(!box || !msg) return;
+    var text = e.message || (e.error && e.error.message) || 'Unknown error';
+    if(e.filename) text += '\n\nFile: ' + e.filename + (e.lineno ? (':' + e.lineno) : '');
+    msg.textContent += (msg.textContent ? '\n\n---\n\n' : '') + text;
+    box.classList.add('show');
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    var box = document.getElementById('fatalError');
+    var msg = document.getElementById('fatalErrorMsg');
+    if(!box || !msg) return;
+    msg.textContent += (msg.textContent ? '\n\n---\n\n' : '') + 'Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+    box.classList.add('show');
+  });
+</script>
+<div id="app">
+  <header>
+    <button class="iconbtn" id="panelToggleLeft" title="Tools">☰</button>
+    <h1>VCK Avatar Editor</h1>
+    <span id="loadedLabel" style="font-size:11px;color:var(--text-dim);background:var(--panel2);border:1px solid var(--border);padding:4px 9px;border-radius:20px;white-space:nowrap;">Loaded: Default</span>
+    <div class="spacer"></div>
+    <button class="pillbtn" id="btnImport">Import</button>
+    <button class="pillbtn primary" id="btnExport">Export</button>
+    <button class="iconbtn" id="btnTheme" title="Toggle theme">🌙</button>
+    <button class="iconbtn" id="panelToggleRight" title="JSON">{ }</button>
+    <input type="file" id="fileInput" accept="application/json,.json">
+  </header>
+
+  <div id="mainRow">
+    <div id="scrim"></div>
+
+    <!-- LEFT: tools -->
+    <div id="leftPanel">
+      <div class="section">
+        <h2>Presets</h2>
+        <div class="row">
+          <button class="pillbtn" style="flex:1" id="presetDefault">Default</button>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <button class="pillbtn" style="flex:1" id="presetBiggest">Biggest</button>
+          <button class="pillbtn" style="flex:1" id="presetSmallest">Smallest</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Tool</h2>
+        <div class="toolgrid">
+          <button class="toolbtn active" data-tool="paint">✏️ Paint</button>
+          <button class="toolbtn" data-tool="fill">🪣 Fill</button>
+          <button class="toolbtn" data-tool="erase">🧹 Delete</button>
+        </div>
+        <div class="brushRow">
+          <span style="font-size:12px;color:var(--text-dim);">Brush</span>
+          <input type="range" id="brushSize" min="1" max="5" step="1" value="1">
+          <span class="brushVal" id="brushVal">1</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Symmetry</h2>
+        <label class="toggle"><span>Mirror while editing</span>
+          <input type="checkbox" id="mirrorToggle">
+        </label>
+        <button class="pillbtn" id="mirrorHandBtn" style="width:100%;">Mirror last hand →</button>
+      </div>
+
+      <div class="section">
+        <h2>Parts visible</h2>
+        <label class="checkline"><input type="checkbox" class="partVis" data-part="head" checked> Head</label>
+        <label class="checkline"><input type="checkbox" class="partVis" data-part="body" checked> Body</label>
+        <label class="checkline"><input type="checkbox" class="partVis" data-part="rightHand" checked> Right Hand</label>
+        <label class="checkline"><input type="checkbox" class="partVis" data-part="leftHand" checked> Left Hand</label>
+      </div>
+
+      <div class="section">
+        <h2>Size (W × H × D)</h2>
+        <div id="sizeGrid"></div>
+        <div style="font-size:10.5px;color:var(--text-dim);margin-top:4px;">Growing pads with background; shrinking crops from the edges. Existing paint stays centered.</div>
+      </div>
+
+      <div class="section">
+        <h2>Edit</h2>
+        <div class="row">
+          <button class="pillbtn" style="flex:1" id="undoBtn">↶ Undo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: 3D viewport -->
+    <div id="viewportWrap">
+      <div id="canvasHost"></div>
+      <div id="statusBar">Click / tap + drag on the model to paint. Right-click drag (or two-finger drag) to rotate. Scroll / pinch to zoom.</div>
+      <div id="debugPanel"><b>Diagnostics</b><div id="debugLines"></div></div>
+    </div>
+
+    <!-- RIGHT: palette + json -->
+    <div id="rightPanel">
+      <div class="section" style="padding:12px 12px 0;">
+        <h2>Palette</h2>
+        <div class="swatchgrid" id="paletteGrid"></div>
+        <div class="swatchAddRow">
+          <input type="color" id="customColor" value="#ff8800">
+          <button class="pillbtn" id="addColorBtn" style="flex:1;">Add color</button>
+        </div>
+      </div>
+      <div id="jsonToolbar">
+        <h2 style="flex:1;align-self:center;">Avatar JSON</h2>
+        <button class="pillbtn" id="applyJsonBtn">Apply</button>
+      </div>
+      <div id="jsonWrap">
+        <textarea id="jsonArea" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" onerror="document.getElementById('fatalErrorMsg').textContent += 'Failed to load Three.js from cdn.jsdelivr.net — check your internet connection or ad-blocker.\n'; document.getElementById('fatalError').classList.add('show');"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" onerror="document.getElementById('fatalErrorMsg').textContent += 'Failed to load OrbitControls.js from cdn.jsdelivr.net — check your internet connection or ad-blocker.\n'; document.getElementById('fatalError').classList.add('show');"></script>
+<script>
+/* =========================================================================
+   VCK Avatar Editor
+   Data format: each body part stores { data:[header, run,idx, run,idx...],
+   width, height, depth }. header is always 2. RLE pairs are (runLength,
+   paletteIndex). Voxel order within the flat run is x fastest, then y,
+   then z slowest:  flatIndex = x + width*(y + height*z)
+   ========================================================================= */
+
+const PARTS = ['head','body','rightHand','leftHand'];
+
+function decodeRLE(dataArr, volume){
+  const out = new Uint8Array(volume);
+  let p = 0;
+  for (let i=1;i<dataArr.length;i+=2){
+    const run = dataArr[i], idx = dataArr[i+1];
+    out.fill(idx, p, p+run);
+    p += run;
+  }
+  return out;
+}
+function encodeRLE(arr){
+  const out = [2];
+  let i=0;
+  while(i<arr.length){
+    let j=i;
+    while(j<arr.length && arr[j]===arr[i]) j++;
+    let runLen = j-i;
+    while(runLen>0){
+      const chunk = Math.min(runLen,255);
+      out.push(chunk, arr[i]);
+      runLen -= chunk;
+    }
+    i=j;
+  }
+  return out;
+}
+function vidx(x,y,z,w,h){ return x + w*(y + h*z); }
+
+/* ---------------------------- Presets ---------------------------------- */
+const PRESET_BIGGEST = {"head": {"data": [2, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 235, 11], "depth": 20, "height": 28, "width": 20}, "body": {"data": [2, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 40, 11], "depth": 16, "height": 32, "width": 20}, "rightHand": {"data": [2, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 198, 11], "depth": 12, "height": 12, "width": 12}, "leftHand": {"data": [2, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 255, 11, 198, 11], "depth": 12, "height": 12, "width": 12}, "palette": [[0.9800000190734863, 0.8199999928474426, 0.6800000071525574, 1.0], [0.9100000262260437, 0.699999988079071, 0.5400000214576721, 1.0], [0.8199999928474426, 0.5799999833106995, 0.41999998688697815, 1.0], [0.7200000286102295, 0.4699999988079071, 0.47999998927116394, 1.0], [0.47999998927116394, 0.25999999046325684, 0.2800000011920929, 1.0], [0.4699999988079071, 0.2800000011920929, 0.18000000715255737, 1.0], [0.3400000035762787, 0.20000000298023224, 0.14000000059604645, 1.0], [0.2199999988079071, 0.12999999523162842, 0.10000000149011612, 1.0], [0.05999999865889549, 0.07000000029802322, 0.07999999821186066, 1.0], [0.18000000715255737, 0.1899999976158142, 0.20999999344348907, 1.0], [0.9300000071525574, 0.9300000071525574, 0.8799999952316284, 1.0], [0.1599999964237213, 0.09000000357627869, 0.05000000074505806, 1.0], [0.3199999928474426, 0.1599999964237213, 0.07999999821186066, 1.0], [0.47999998927116394, 0.18000000715255737, 0.09000000357627869, 1.0], [0.7799999713897705, 0.5799999833106995, 0.2800000011920929, 1.0], [0.9100000262260437, 0.7900000214576721, 0.550000011920929, 1.0], [0.8199999928474426, 0.18000000715255737, 0.1599999964237213, 1.0], [0.8999999761581421, 0.4000000059604645, 0.11999999731779099, 1.0], [0.9200000166893005, 0.7200000286102295, 0.14000000059604645, 1.0], [0.20000000298023224, 0.6499999761581421, 0.3799999952316284, 1.0], [0.15000000596046448, 0.6499999761581421, 0.7200000286102295, 1.0], [0.18000000715255737, 0.41999998688697815, 0.7599999904632568, 1.0], [0.5, 0.2800000011920929, 0.7200000286102295, 1.0], [0.8500000238418579, 0.3199999928474426, 0.550000011920929, 1.0]], "createdAt": 1789535679364, "version": 3};
+
+const PRESET_DEFAULT = {"head": {"data": [2, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 100, 0, 10, 3, 10, 0, 10, 3, 10, 0, 3, 3, 4, 5, 3, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 2, 3, 1, 9, 4, 3, 1, 9, 2, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 115, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 3, 10, 0, 10, 12, 10, 0, 10, 12, 10, 0, 10, 12, 10, 0, 10, 12, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 5, 0], "depth": 20, "height": 28, "width": 20}, "body": {"data": [2, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 183, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 86, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 86, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 86, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 86, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 6, 0, 14, 22, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 183, 0], "depth": 16, "height": 32, "width": 20}, "rightHand": {"data": [2, 255, 0, 255, 0, 118, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 255, 0, 255, 0, 118, 0], "depth": 12, "height": 12, "width": 12}, "leftHand": {"data": [2, 255, 0, 255, 0, 118, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 104, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 8, 0, 4, 3, 255, 0, 255, 0, 118, 0], "depth": 12, "height": 12, "width": 12}, "palette": [[0.9800000190734863, 0.8199999928474426, 0.6800000071525574, 1.0], [0.9100000262260437, 0.699999988079071, 0.5400000214576721, 1.0], [0.8199999928474426, 0.5799999833106995, 0.41999998688697815, 1.0], [0.7200000286102295, 0.4699999988079071, 0.47999998927116394, 1.0], [0.47999998927116394, 0.25999999046325684, 0.2800000011920929, 1.0], [0.4699999988079071, 0.2800000011920929, 0.18000000715255737, 1.0], [0.3400000035762787, 0.20000000298023224, 0.14000000059604645, 1.0], [0.2199999988079071, 0.12999999523162842, 0.10000000149011612, 1.0], [0.05999999865889549, 0.07000000029802322, 0.07999999821186066, 1.0], [0.18000000715255737, 0.1899999976158142, 0.20999999344348907, 1.0], [0.9300000071525574, 0.9300000071525574, 0.8799999952316284, 1.0], [0.1599999964237213, 0.09000000357627869, 0.05000000074505806, 1.0], [0.3199999928474426, 0.1599999964237213, 0.07999999821186066, 1.0], [0.47999998927116394, 0.18000000715255737, 0.09000000357627869, 1.0], [0.7799999713897705, 0.5799999833106995, 0.2800000011920929, 1.0], [0.9100000262260437, 0.7900000214576721, 0.550000011920929, 1.0], [0.8199999928474426, 0.18000000715255737, 0.1599999964237213, 1.0], [0.8999999761581421, 0.4000000059604645, 0.11999999731779099, 1.0], [0.9200000166893005, 0.7200000286102295, 0.14000000059604645, 1.0], [0.20000000298023224, 0.6499999761581421, 0.3799999952316284, 1.0], [0.15000000596046448, 0.6499999761581421, 0.7200000286102295, 1.0], [0.18000000715255737, 0.41999998688697815, 0.7599999904632568, 1.0], [0.5, 0.2800000011920929, 0.7200000286102295, 1.0], [0.8500000238418579, 0.3199999928474426, 0.550000011920929, 1.0]], "createdAt": 1789538680704, "version": 3};
+
+const PRESET_SMALLEST = {"head": {"data": [2, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 58, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 241, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 241, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 241, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 218, 0], "depth": 20, "height": 28, "width": 20}, "body": {"data": [2, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 48, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 255, 0, 66, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 255, 0, 66, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 255, 0, 66, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 16, 0, 4, 11, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 48, 0], "depth": 16, "height": 32, "width": 20}, "rightHand": {"data": [2, 255, 0, 255, 0, 255, 0, 20, 0, 2, 11, 10, 0, 2, 11, 130, 0, 2, 11, 10, 0, 2, 11, 255, 0, 255, 0, 255, 0, 20, 0], "depth": 12, "height": 12, "width": 12}, "leftHand": {"data": [2, 255, 0, 255, 0, 255, 0, 20, 0, 2, 11, 10, 0, 2, 11, 130, 0, 2, 11, 10, 0, 2, 11, 255, 0, 255, 0, 255, 0, 20, 0], "depth": 12, "height": 12, "width": 12}, "palette": [[0.9800000190734863, 0.8199999928474426, 0.6800000071525574, 1.0], [0.9100000262260437, 0.699999988079071, 0.5400000214576721, 1.0], [0.8199999928474426, 0.5799999833106995, 0.41999998688697815, 1.0], [0.7200000286102295, 0.4699999988079071, 0.47999998927116394, 1.0], [0.47999998927116394, 0.25999999046325684, 0.2800000011920929, 1.0], [0.4699999988079071, 0.2800000011920929, 0.18000000715255737, 1.0], [0.3400000035762787, 0.20000000298023224, 0.14000000059604645, 1.0], [0.2199999988079071, 0.12999999523162842, 0.10000000149011612, 1.0], [0.05999999865889549, 0.07000000029802322, 0.07999999821186066, 1.0], [0.18000000715255737, 0.1899999976158142, 0.20999999344348907, 1.0], [0.9300000071525574, 0.9300000071525574, 0.8799999952316284, 1.0], [0.1599999964237213, 0.09000000357627869, 0.05000000074505806, 1.0], [0.3199999928474426, 0.1599999964237213, 0.07999999821186066, 1.0], [0.47999998927116394, 0.18000000715255737, 0.09000000357627869, 1.0], [0.7799999713897705, 0.5799999833106995, 0.2800000011920929, 1.0], [0.9100000262260437, 0.7900000214576721, 0.550000011920929, 1.0], [0.8199999928474426, 0.18000000715255737, 0.1599999964237213, 1.0], [0.8999999761581421, 0.4000000059604645, 0.11999999731779099, 1.0], [0.9200000166893005, 0.7200000286102295, 0.14000000059604645, 1.0], [0.20000000298023224, 0.6499999761581421, 0.3799999952316284, 1.0], [0.15000000596046448, 0.6499999761581421, 0.7200000286102295, 1.0], [0.18000000715255737, 0.41999998688697815, 0.7599999904632568, 1.0], [0.5, 0.2800000011920929, 0.7200000286102295, 1.0], [0.8500000238418579, 0.3199999928474426, 0.550000011920929, 1.0]], "createdAt": 1789535820013, "version": 3};
+
+/* --------------------------- App state ---------------------------------- */
+const state = {
+  avatar: {},          // avatar[part] = {width,height,depth,colors:Uint8Array}
+  palette: [],          // [[r,g,b,a], ...]
+  createdAt: Date.now(),
+  activeColor: 0,
+  tool: 'paint',
+  brushSize: 1,
+  mirror: false,
+  lastEditedHand: null,
+  partVisible: {head:true, body:true, rightHand:true, leftHand:true},
+};
+const undoStack = [];
+
+/* --------------------------- Three.js setup ------------------------------*/
+const host = document.getElementById('canvasHost');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0xbdeafb, 1); // light sky blue viewport background
+host.appendChild(renderer.domElement);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+scene.add(ambient);
+const dir1 = new THREE.DirectionalLight(0xffffff, 0.9);
+dir1.position.set(60,90,60);
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0xffffff, 0.35);
+dir2.position.set(-60,20,-40);
+scene.add(dir2);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.12;
+controls.enablePan = false;
+controls.enableRotate = true;
+controls.enableZoom = true;
+controls.minDistance = 20;
+controls.maxDistance = 260;
+controls.target.set(0, 22, 0);
+camera.position.set(60, 55, 90);
+controls.update();
+// Left mouse button / single-finger touch are reserved entirely for painting.
+// Camera only responds to the right mouse button, the middle button (zoom),
+// the scroll wheel, and two-finger touch gestures.
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+renderer.domElement.addEventListener('contextmenu', (e)=>e.preventDefault());
+
+const partGroups = {}; // part -> THREE.Group
+const partProxies = {}; // part -> invisible solid Mesh used only for fast raycasting
+const partCoords = {}; // part -> Int16Array flatIdx*3 = [x,y,z,...]
+PARTS.forEach(p => { const g = new THREE.Group(); scene.add(g); partGroups[p]=g; });
+
+const raycaster = new THREE.Raycaster();
+
+/* ------------------------------ Diagnostics --------------------------------
+   Visible on-screen log so we can see exactly what's happening on your
+   device in real time, instead of guessing blind. */
+const debugLinesEl_ready = [];
+function debugLog(msg, kind){
+  const el = document.getElementById('debugLines');
+  if(!el){ debugLinesEl_ready.push([msg,kind]); return; }
+  const line = document.createElement('div');
+  if(kind) line.className = kind;
+  const t = new Date();
+  const ts = t.toLocaleTimeString(undefined,{hour12:false}) + '.' + String(t.getMilliseconds()).padStart(3,'0');
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line);
+  while(el.children.length > 25) el.removeChild(el.firstChild);
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+const VOXEL_GAP = 0.06; // visual gap between cubes
+const ERASE_SENTINEL = 255; // internal-only marker for a deleted/hidden voxel
+
+function resizeRenderer(){
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect = w/Math.max(h,1);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeRenderer);
+
+function paletteColor(i){
+  const p = state.palette[i] || [0.85,0.2,0.85,1];
+  return new THREE.Color(p[0], p[1], p[2]);
+}
+
+function disposeMesh(mesh){
+  if(!mesh) return;
+  if(mesh.geometry !== VOXEL_GEO) mesh.geometry.dispose(); // never dispose the shared cube geometry
+  mesh.material.dispose();
+  mesh.parent && mesh.parent.remove(mesh);
+}
+
+/* ---------------------------------------------------------------------------
+   Voxel rendering — deliberately the simplest possible coloring technique:
+   for each body part, voxels are grouped by their palette color, and each
+   group becomes one InstancedMesh whose material has a single plain solid
+   `color` (the oldest, most fundamental way to color anything in three.js —
+   no per-vertex or per-instance color attribute involved anywhere). Only
+   position (via setMatrixAt, on the shared cube geometry) varies per
+   instance. Erased voxels simply aren't included in any group at all.
+   Editing marks the part "dirty"; dirty parts are rebuilt once per animation
+   frame (see animate()), so a whole brush stroke or drag only costs one
+   rebuild per frame, not one per pointer event.
+--------------------------------------------------------------------------- */
+const VOXEL_GEO = new THREE.BoxGeometry(1-VOXEL_GAP, 1-VOXEL_GAP, 1-VOXEL_GAP);
+const partColorMeshes = {}; // part -> Map(colorIndex -> InstancedMesh)
+const dirtyParts = new Set();
+function markPartDirty(part){ dirtyParts.add(part); }
+
+function applyPartVisibility(part){
+  const map = partColorMeshes[part];
+  if(!map) return;
+  map.forEach(mesh => { mesh.visible = state.partVisible[part]; });
+}
+
+function buildPartMesh(part){
+  const pd = state.avatar[part];
+  const {width:w, height:h, depth:d, colors} = pd;
+  const volume = w*h*d;
+
+  const oldMap = partColorMeshes[part];
+  if(oldMap) oldMap.forEach(m => disposeMesh(m));
+  partColorMeshes[part] = new Map();
+  disposeMesh(partProxies[part]);
+
+  const coords = new Int16Array(volume*3);
+  const groups = new Map(); // colorIndex -> array of flat voxel indices
+  for(let z=0; z<d; z++){
+    for(let y=0; y<h; y++){
+      for(let x=0; x<w; x++){
+        const idx = vidx(x,y,z,w,h);
+        coords[idx*3]=x; coords[idx*3+1]=y; coords[idx*3+2]=z;
+        const c = colors[idx];
+        if(c===ERASE_SENTINEL) continue; // erased — simply has no geometry
+        let list = groups.get(c);
+        if(!list){ list = []; groups.set(c, list); }
+        list.push(idx);
+      }
+    }
+  }
+
+  const m4 = new THREE.Matrix4();
+  groups.forEach((flatList, colorIdx) => {
+    const mat = new THREE.MeshBasicMaterial({ color: paletteColor(colorIdx), side: THREE.DoubleSide });
+    const mesh = new THREE.InstancedMesh(VOXEL_GEO, mat, flatList.length);
+    mesh.userData.part = part;
+    for(let i=0;i<flatList.length;i++){
+      const flat = flatList[i];
+      const x = coords[flat*3], y = coords[flat*3+1], z = coords[flat*3+2];
+      m4.identity();
+      m4.setPosition(x+0.5, y+0.5, z+0.5);
+      mesh.setMatrixAt(i, m4);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    partGroups[part].add(mesh);
+    partColorMeshes[part].set(colorIdx, mesh);
+  });
+  applyPartVisibility(part);
+
+  // Invisible proxy used only for fast raycasting/picking (O(1) per click
+  // instead of testing every individual voxel).
+  const proxyGeo = new THREE.BoxGeometry(w, h, d);
+  proxyGeo.translate(w/2, h/2, d/2);
+  const proxy = new THREE.Mesh(proxyGeo, new THREE.MeshBasicMaterial());
+  proxy.visible = false;
+  proxy.userData.part = part;
+  partGroups[part].add(proxy);
+  partProxies[part] = proxy;
+  partCoords[part] = coords;
+}
+
+function positionGroups(){
+  const body = state.avatar.body, head = state.avatar.head;
+  const rh = state.avatar.rightHand, lh = state.avatar.leftHand;
+  if(!body||!head||!rh||!lh) return;
+  partGroups.body.position.set(-body.width/2, 0, -body.depth/2);
+  partGroups.head.position.set(-head.width/2, body.height - 1, -head.depth/2);
+  partGroups.rightHand.position.set(body.width/2 - 2, body.height*0.32, -rh.depth/2);
+  partGroups.leftHand.position.set(-body.width/2 - lh.width + 2, body.height*0.32, -lh.depth/2);
+  controls.target.set(0, body.height*0.55, 0);
+}
+
+function rebuildAllMeshes(){
+  PARTS.forEach(buildPartMesh);
+  positionGroups();
+}
+
+// Palette edits (recoloring a swatch) affect every voxel using that index,
+// across every part, immediately — these are deliberate one-off actions
+// (not part of a fast drag) so there's no need to throttle them.
+function refreshAllColorsEverywhere(){ PARTS.forEach(buildPartMesh); }
+
+
+/* ----------------------------- Loading ----------------------------------*/
+function loadAvatarFromObject(obj, sourceName){
+  const avatar = {};
+  PARTS.forEach(part=>{
+    const p = obj[part];
+    const volume = p.width*p.height*p.depth;
+    avatar[part] = {
+      width:p.width, height:p.height, depth:p.depth,
+      colors: decodeRLE(p.data, volume)
+    };
+  });
+  state.avatar = avatar;
+  state.palette = (obj.palette || []).map(c=>c.slice());
+  state.createdAt = obj.createdAt || Date.now();
+  undoStack.length = 0;
+  state.lastEditedHand = null;
+  rebuildAllMeshes();
+  renderPalette();
+  renderSizeGrid();
+  updateJsonPanel();
+  updateStatus();
+  const label = document.getElementById('loadedLabel');
+  if(label) label.textContent = 'Loaded: ' + (sourceName || 'JSON');
+}
+
+function buildAvatarObject(){
+  const obj = {};
+  PARTS.forEach(part=>{
+    const pd = state.avatar[part];
+    // Erased voxels are an editor-only concept; the exported format has no
+    // "empty" marker, so deleted pixels are written back out as background
+    // color 0 (matches how the original files represent unpainted areas).
+    let exportColors = pd.colors;
+    for(let i=0;i<exportColors.length;i++){
+      if(exportColors[i] === ERASE_SENTINEL){
+        if(exportColors === pd.colors) exportColors = pd.colors.slice();
+        exportColors[i] = 0;
+      }
+    }
+    obj[part] = {
+      data: encodeRLE(exportColors),
+      depth: pd.depth, height: pd.height, width: pd.width
+    };
+  });
+  obj.palette = state.palette.map(c=>c.slice());
+  obj.createdAt = state.createdAt;
+  obj.version = 3;
+  return obj;
+}
+
+/* ------------------------------ JSON panel -------------------------------*/
+function prettyStringify(value, indent){
+  indent = indent||0;
+  const pad = '  '.repeat(indent), pad2 = '  '.repeat(indent+1);
+  if(Array.isArray(value)){
+    const flat = value.every(v => typeof v !== 'object' || v===null);
+    if(flat) return '[' + value.map(v=>JSON.stringify(v)).join(',') + ']';
+    return '[\n' + value.map(v=>pad2+prettyStringify(v,indent+1)).join(',\n') + '\n'+pad+']';
+  } else if(value && typeof value==='object'){
+    const keys = Object.keys(value);
+    return '{\n' + keys.map(k=>pad2+JSON.stringify(k)+': '+prettyStringify(value[k],indent+1)).join(',\n') + '\n'+pad+'}';
+  }
+  return JSON.stringify(value);
+}
+const jsonArea = document.getElementById('jsonArea');
+let suppressJsonUpdate = false;
+function updateJsonPanel(){
+  if(suppressJsonUpdate) return;
+  jsonArea.value = prettyStringify(buildAvatarObject());
+}
+document.getElementById('applyJsonBtn').addEventListener('click', ()=>{
+  try{
+    const obj = JSON.parse(jsonArea.value);
+    PARTS.forEach(p=>{ if(!obj[p]) throw new Error('Missing part: '+p); });
+    if(!obj.palette) throw new Error('Missing palette');
+    loadAvatarFromObject(obj, 'Edited JSON');
+    flashStatus('JSON applied ✓');
+  }catch(e){
+    flashStatus('JSON error: '+e.message, true);
+  }
+});
+
+/* ------------------------------- Palette ---------------------------------*/
+const paletteGrid = document.getElementById('paletteGrid');
+const PART_LABELS = {head:'Head', body:'Body', rightHand:'R.Hand', leftHand:'L.Hand'};
+
+function renderSizeGrid(){
+  const grid = document.getElementById('sizeGrid');
+  grid.innerHTML = '';
+  PARTS.forEach(part=>{
+    const pd = state.avatar[part];
+    const row = document.createElement('div');
+    row.className = 'sizeRow';
+    row.innerHTML =
+      '<span class="sizeLabel">'+PART_LABELS[part]+'</span>' +
+      '<input type="number" min="1" max="64" value="'+pd.width+'" data-part="'+part+'" data-dim="width" title="Width">' +
+      '<input type="number" min="1" max="64" value="'+pd.height+'" data-part="'+part+'" data-dim="height" title="Height">' +
+      '<input type="number" min="1" max="64" value="'+pd.depth+'" data-part="'+part+'" data-dim="depth" title="Depth">';
+    grid.appendChild(row);
+  });
+  grid.querySelectorAll('input[type=number]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const part = inp.dataset.part;
+      const pd = state.avatar[part];
+      let v = Math.round(parseFloat(inp.value));
+      if(!Number.isFinite(v) || v<1) v = 1;
+      if(v>64) v = 64;
+      inp.value = v;
+      const dims = {width:pd.width, height:pd.height, depth:pd.depth};
+      dims[inp.dataset.dim] = v;
+      resizePart(part, dims.width, dims.height, dims.depth);
+    });
+  });
+}
+
+// Resizes one part's voxel grid, keeping existing content centered: growing
+// pads the new border with background color 0, shrinking crops symmetrically
+// from the edges. The 2x2x2 protected core is unaffected either way since
+// it's always defined relative to the (possibly new) center.
+function resizePart(part, newW, newH, newD){
+  const pd = state.avatar[part];
+  if(newW===pd.width && newH===pd.height && newD===pd.depth) return;
+  pushUndo([part]);
+  const newColors = new Uint8Array(newW*newH*newD).fill(0);
+  const offX = Math.floor((newW - pd.width)/2);
+  const offY = Math.floor((newH - pd.height)/2);
+  const offZ = Math.floor((newD - pd.depth)/2);
+  for(let z=0; z<pd.depth; z++){
+    const nz = z+offZ; if(nz<0||nz>=newD) continue;
+    for(let y=0; y<pd.height; y++){
+      const ny = y+offY; if(ny<0||ny>=newH) continue;
+      for(let x=0; x<pd.width; x++){
+        const nx = x+offX; if(nx<0||nx>=newW) continue;
+        newColors[vidx(nx,ny,nz,newW,newH)] = pd.colors[vidx(x,y,z,pd.width,pd.height)];
+      }
+    }
+  }
+  pd.width = newW; pd.height = newH; pd.depth = newD; pd.colors = newColors;
+  buildPartMesh(part);
+  positionGroups(); // other parts may shift (e.g. head sits on top of body's height)
+  updateJsonPanel();
+  flashStatus(PART_LABELS[part] + ' resized to ' + newW + '×' + newH + '×' + newD);
+}
+
+function renderPalette(){
+  paletteGrid.innerHTML = '';
+  state.palette.forEach((c,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (i===state.activeColor ? ' active':'');
+    sw.style.background = `rgba(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)},${c[3]})`;
+    sw.title = 'Color index '+i;
+    sw.addEventListener('click', ()=>{ state.activeColor = i; renderPalette(); debugLog('active color set to index ' + i); });
+    sw.addEventListener('dblclick', (e)=>{
+      e.stopPropagation();
+      const hex = '#' + c.slice(0,3).map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join('');
+      const inp = document.createElement('input');
+      inp.type = 'color'; inp.value = hex;
+      // Must be attached to the document for some browsers to open the picker.
+      inp.style.position = 'fixed';
+      inp.style.left = '-9999px';
+      inp.style.opacity = '0';
+      document.body.appendChild(inp);
+      inp.addEventListener('input', ()=>{
+        const r = parseInt(inp.value.substr(1,2),16)/255;
+        const g = parseInt(inp.value.substr(3,2),16)/255;
+        const b = parseInt(inp.value.substr(5,2),16)/255;
+        state.palette[i] = [r,g,b,1.0];
+        refreshAllColorsEverywhere();
+        renderPalette();
+        updateJsonPanel();
+      });
+      inp.addEventListener('change', ()=>{ inp.remove(); });
+      inp.click();
+    });
+    paletteGrid.appendChild(sw);
+  });
+}
+document.getElementById('addColorBtn').addEventListener('click', ()=>{
+  const hex = document.getElementById('customColor').value;
+  const r = parseInt(hex.substr(1,2),16)/255;
+  const g = parseInt(hex.substr(3,2),16)/255;
+  const b = parseInt(hex.substr(5,2),16)/255;
+  state.palette.push([r,g,b,1.0]);
+  state.activeColor = state.palette.length-1;
+  renderPalette();
+  updateJsonPanel();
+});
+
+/* -------------------------------- Undo -----------------------------------*/
+function pushUndo(parts){
+  const snap = {};
+  parts.forEach(p=>{
+    const pd = state.avatar[p];
+    snap[p] = {width:pd.width, height:pd.height, depth:pd.depth, colors:pd.colors.slice()};
+  });
+  undoStack.push(snap);
+  if(undoStack.length>40) undoStack.shift();
+}
+function doUndo(){
+  const snap = undoStack.pop();
+  if(!snap) { flashStatus('Nothing to undo'); return; }
+  Object.keys(snap).forEach(p=>{
+    const s = snap[p];
+    state.avatar[p] = {width:s.width, height:s.height, depth:s.depth, colors:s.colors};
+    dirtyParts.delete(p); // an undo always wins over any pending in-flight edit
+    buildPartMesh(p);
+  });
+  positionGroups(); // a resize may have been undone, so part offsets can change too
+  renderSizeGrid();
+  updateJsonPanel();
+  flashStatus('Undo ✓');
+}
+document.getElementById('undoBtn').addEventListener('click', doUndo);
+window.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); doUndo(); }
+});
+
+/* ---------------------------- Voxel editing -------------------------------*/
+// Every part keeps an indestructible 2x2x2 core at its center — the erase
+// tool (brush or bucket) can never remove these voxels, no matter what.
+const CORE_SIZE = 2;
+function isCoreVoxel(part, x, y, z){
+  const pd = state.avatar[part];
+  const half = Math.floor(CORE_SIZE/2); // 1
+  const cx = Math.floor(pd.width/2), cy = Math.floor(pd.height/2), cz = Math.floor(pd.depth/2);
+  return x >= cx-half && x < cx-half+CORE_SIZE &&
+         y >= cy-half && y < cy-half+CORE_SIZE &&
+         z >= cz-half && z < cz-half+CORE_SIZE;
+}
+
+function setVoxel(part, x, y, z, colorIdx, _isMirrorPass){
+  const pd = state.avatar[part];
+  if(x<0||y<0||z<0||x>=pd.width||y>=pd.height||z>=pd.depth) return;
+  if(colorIdx===ERASE_SENTINEL && isCoreVoxel(part,x,y,z)) return; // protected core — cannot be deleted
+  const flat = vidx(x,y,z,pd.width,pd.height);
+  if(pd.colors[flat]===colorIdx) { /* still fine, continue for mirror */ }
+  pd.colors[flat] = colorIdx;
+  markPartDirty(part);
+
+  if(!_isMirrorPass){
+    if(part==='rightHand'||part==='leftHand') state.lastEditedHand = part;
+    if(state.mirror){
+      if(part==='head'||part==='body'){
+        const mx = pd.width-1-x;
+        setVoxel(part, mx, y, z, colorIdx, true);
+      } else if(part==='rightHand'||part==='leftHand'){
+        const other = part==='rightHand' ? 'leftHand':'rightHand';
+        const opd = state.avatar[other];
+        const mx = opd.width-1-x;
+        setVoxel(other, mx, y, z, colorIdx, true);
+      }
+    }
+  }
+}
+
+function paintBrush(part, x0,y0,z0, normalAxis, colorIdx){
+  const size = state.brushSize;
+  const half = Math.floor((size-1)/2);
+  const lo = -half, hi = size-1-half;
+  const pd = state.avatar[part];
+  for(let a=lo; a<=hi; a++){
+    for(let b=lo; b<=hi; b++){
+      let x=x0,y=y0,z=z0;
+      if(normalAxis==='x'){ y=y0+a; z=z0+b; }
+      else if(normalAxis==='y'){ x=x0+a; z=z0+b; }
+      else { x=x0+a; y=y0+b; }
+      setVoxel(part, x, y, z, colorIdx);
+    }
+  }
+}
+
+function floodFill(part, x0,y0,z0, colorIdx, _isMirrorPass){
+  const pd = state.avatar[part];
+  const w=pd.width, h=pd.height, d=pd.depth;
+  const startFlat = vidx(x0,y0,z0,w,h);
+  const target = pd.colors[startFlat];
+  if(target === colorIdx) return;
+  const stack = [[x0,y0,z0]];
+  const visited = new Uint8Array(pd.colors.length);
+  visited[startFlat]=1;
+  const changed = [];
+  while(stack.length){
+    const [x,y,z] = stack.pop();
+    const flat = vidx(x,y,z,w,h);
+    if(pd.colors[flat] !== target) continue;
+    // The flood still spreads through/around a protected core voxel — it
+    // just never overwrites it, so erasing hollows the part out around it.
+    if(!(colorIdx===ERASE_SENTINEL && isCoreVoxel(part,x,y,z))){
+      pd.colors[flat] = colorIdx;
+      changed.push(flat);
+    }
+    const neighbors = [[x-1,y,z],[x+1,y,z],[x,y-1,z],[x,y+1,z],[x,y,z-1],[x,y,z+1]];
+    for(const [nx,ny,nz] of neighbors){
+      if(nx<0||ny<0||nz<0||nx>=w||ny>=h||nz>=d) continue;
+      const nf = vidx(nx,ny,nz,w,h);
+      if(visited[nf]) continue;
+      if(pd.colors[nf]!==target) continue;
+      visited[nf]=1;
+      stack.push([nx,ny,nz]);
+    }
+  }
+  if(changed.length) markPartDirty(part);
+
+  if(!_isMirrorPass){
+    if(part==='rightHand'||part==='leftHand') state.lastEditedHand = part;
+    if(state.mirror){
+      if(part==='head'||part==='body'){
+        const mx = pd.width-1-x0;
+        floodFill(part, mx, y0, z0, colorIdx, true);
+      } else {
+        const other = part==='rightHand' ? 'leftHand':'rightHand';
+        const opd = state.avatar[other];
+        const mx = opd.width-1-x0;
+        floodFill(other, mx, y0, z0, colorIdx, true);
+      }
+    }
+  }
+}
+
+function mirrorLastHand(){
+  const src = state.lastEditedHand;
+  if(!src){ flashStatus('Edit a hand first', true); return; }
+  const dst = src==='rightHand' ? 'leftHand' : 'rightHand';
+  const sp = state.avatar[src];
+  // If the two hands aren't the same size (e.g. one was resized on its own),
+  // match the destination to the source's size first so the mirror can't
+  // silently write out of bounds or leave stray unmirrored voxels.
+  const dpBefore = state.avatar[dst];
+  if(dpBefore.width!==sp.width || dpBefore.height!==sp.height || dpBefore.depth!==sp.depth){
+    resizePart(dst, sp.width, sp.height, sp.depth);
+  }
+  const dp = state.avatar[dst];
+  pushUndo([dst]);
+  const nc = new Uint8Array(dp.colors.length);
+  for(let z=0; z<sp.depth; z++){
+    for(let y=0; y<sp.height; y++){
+      for(let x=0; x<sp.width; x++){
+        const sIdx = vidx(x,y,z,sp.width,sp.height);
+        const mx = dp.width-1-x;
+        const dIdx = vidx(mx,y,z,dp.width,dp.height);
+        nc[dIdx] = sp.colors[sIdx];
+      }
+    }
+  }
+  dp.colors = nc;
+  markPartDirty(dst);
+  updateJsonPanel();
+  flashStatus('Mirrored ' + src + ' → ' + dst);
+}
+document.getElementById('mirrorHandBtn').addEventListener('click', mirrorLastHand);
+
+/* --------------------------- Pointer / raycast ---------------------------*/
+let strokeStarted = false;
+
+function ndcFromEvent(clientX, clientY){
+  const rect = renderer.domElement.getBoundingClientRect();
+  return new THREE.Vector2(
+    ((clientX-rect.left)/rect.width)*2-1,
+    -((clientY-rect.top)/rect.height)*2+1
+  );
+}
+
+function pickVoxel(clientX, clientY){
+  const ndc = ndcFromEvent(clientX, clientY);
+  raycaster.setFromCamera(ndc, camera);
+  // Raycast against cheap whole-part proxy boxes (O(1)) instead of every
+  // individual voxel instance (which was O(thousands) per pointer move and
+  // was the cause of the editing lag).
+  const proxies = PARTS.filter(p=>state.partVisible[p]).map(p=>partProxies[p]);
+  const hits = raycaster.intersectObjects(proxies, false);
+  if(!hits.length){ debugLog('pick: MISS (no proxy hit)', 'err'); return null; }
+  const hit = hits[0];
+  const part = hit.object.userData.part;
+  const pd = state.avatar[part];
+  const local = partGroups[part].worldToLocal(hit.point.clone());
+  const n = hit.face.normal;
+  let axis = 'z';
+  if(Math.abs(n.x) >= Math.abs(n.y) && Math.abs(n.x) >= Math.abs(n.z)) axis='x';
+  else if(Math.abs(n.y) >= Math.abs(n.z)) axis='y';
+
+  const clamp = (v,max)=>Math.min(Math.max(Math.floor(v),0), max-1);
+  let x = clamp(local.x, pd.width), y = clamp(local.y, pd.height), z = clamp(local.z, pd.depth);
+  if(axis==='x') x = n.x < 0 ? 0 : pd.width-1;
+  else if(axis==='y') y = n.y < 0 ? 0 : pd.height-1;
+  else z = n.z < 0 ? 0 : pd.depth-1;
+  debugLog('pick: HIT ' + part + ' (' + x + ',' + y + ',' + z + ') axis=' + axis, 'ok');
+  return {part, x, y, z, axis};
+}
+
+function applyToolAt(clientX, clientY){
+  const pick = pickVoxel(clientX, clientY);
+  if(!pick) return;
+  if(!strokeStarted){
+    strokeStarted = true;
+    const parts = new Set([pick.part]);
+    if(state.mirror){
+      if(pick.part==='head'||pick.part==='body') parts.add(pick.part);
+      else parts.add(pick.part==='rightHand'?'leftHand':'rightHand');
+    }
+    pushUndo([...parts]);
+  }
+  const pd = state.avatar[pick.part];
+  const flatBefore = vidx(pick.x, pick.y, pick.z, pd.width, pd.height);
+  const colorBefore = pd.colors[flatBefore];
+  if(state.tool==='paint'){
+    paintBrush(pick.part, pick.x, pick.y, pick.z, pick.axis, state.activeColor);
+  } else if(state.tool==='erase'){
+    paintBrush(pick.part, pick.x, pick.y, pick.z, pick.axis, ERASE_SENTINEL);
+  } else if(state.tool==='fill'){
+    floodFill(pick.part, pick.x, pick.y, pick.z, state.activeColor);
+  }
+  const colorAfter = pd.colors[flatBefore];
+  debugLog('applied ' + state.tool + ': color[' + flatBefore + '] ' + colorBefore + ' -> ' + colorAfter + ' (activeColor=' + state.activeColor + ')', colorAfter!==colorBefore ? 'ok' : 'err');
+}
+
+
+const host2 = renderer.domElement;
+const statusBar = document.getElementById('statusBar');
+
+// Track active touch pointers so we only paint on a single finger; a second
+// finger touching down hands control over to OrbitControls for rotate/zoom.
+const activeTouches = new Map();
+let paintPointerId = null;
+
+function eligibleForPaint(e){
+  if(e.pointerType === 'mouse') return e.button === 0;
+  return true; // touch / pen — count check happens at call sites
+}
+
+function onPointerDown(e){
+  debugLog('pointerdown: type=' + e.pointerType + ' button=' + e.button);
+  if(e.pointerType === 'touch'){
+    activeTouches.set(e.pointerId, true);
+    if(activeTouches.size > 1){
+      // a second finger just landed — cancel any in-progress paint stroke
+      paintPointerId = null;
+      strokeStarted = false;
+      return;
+    }
+  }
+  if(!eligibleForPaint(e)){ debugLog('pointerdown ignored (not eligible for paint)'); return; }
+  paintPointerId = e.pointerId;
+  strokeStarted = false;
+  applyToolAt(e.clientX, e.clientY);
+  e.preventDefault();
+}
+
+function onPointerMove(e){
+  if(e.pointerType === 'touch' && !activeTouches.has(e.pointerId)) return;
+  if(paintPointerId === null || e.pointerId !== paintPointerId) return;
+  if(e.pointerType === 'touch' && activeTouches.size !== 1) return;
+  if(state.tool === 'fill') return; // fill only fires on the initial tap
+  applyToolAt(e.clientX, e.clientY);
+}
+
+function endPaintPointer(e){
+  if(e.pointerType === 'touch') activeTouches.delete(e.pointerId);
+  if(e.pointerId === paintPointerId){
+    paintPointerId = null;
+    if(strokeStarted){ strokeStarted = false; updateJsonPanel(); }
+  }
+}
+
+host2.addEventListener('pointerdown', onPointerDown);
+host2.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', endPaintPointer);
+window.addEventListener('pointercancel', endPaintPointer);
+
+/* -------------------------------- Status ----------------------------------*/
+function updateStatus(){
+  const toolLabel = state.tool==='paint' ? 'Paint' : state.tool==='erase' ? 'Delete' : 'Fill';
+  const verb = state.tool==='paint' ? 'paint' : state.tool==='erase' ? 'delete' : 'fill';
+  const coreNote = state.tool==='erase' ? ' A protected 4×4×4 core stays intact in the center of every part.' : '';
+  statusBar.textContent = `${toolLabel} tool, brush ${state.brushSize}×${state.brushSize}${state.mirror?', mirror ON':''}. Left-click/drag (or 1 finger) to ${verb} — right-click drag or 2 fingers to rotate.${coreNote}`;
+}
+function flashStatus(msg, isErr){
+  statusBar.textContent = msg;
+  statusBar.style.color = isErr ? 'var(--danger)' : 'var(--good)';
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(()=>{ statusBar.style.color=''; updateStatus(); }, 1600);
+}
+
+/* -------------------------------- Tool UI ---------------------------------*/
+document.querySelectorAll('.toolbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.toolbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.tool = btn.dataset.tool;
+    updateStatus();
+  });
+});
+const brushSlider = document.getElementById('brushSize');
+const brushVal = document.getElementById('brushVal');
+brushSlider.addEventListener('input', ()=>{
+  state.brushSize = parseInt(brushSlider.value,10);
+  brushVal.textContent = state.brushSize;
+  updateStatus();
+});
+document.getElementById('mirrorToggle').addEventListener('change', (e)=>{
+  state.mirror = e.target.checked;
+  updateStatus();
+});
+document.querySelectorAll('.partVis').forEach(cb=>{
+  cb.addEventListener('change', ()=>{
+    const part = cb.dataset.part;
+    state.partVisible[part] = cb.checked;
+    applyPartVisibility(part);
+  });
+});
+
+/* ------------------------------ Import / Export ---------------------------*/
+document.getElementById('btnImport').addEventListener('click', ()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      loadAvatarFromObject(obj, file.name);
+      flashStatus('Imported ' + file.name);
+    }catch(err){
+      flashStatus('Import failed: '+err.message, true);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const obj = buildAvatarObject();
+  obj.createdAt = Date.now();
+  const rand4 = Math.floor(1000 + Math.random()*9000);
+  const filename = '1789535' + rand4 + '.json';
+  const blob = new Blob([JSON.stringify(obj)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  flashStatus('Exported ' + filename);
+});
+
+/* -------------------------------- Presets ---------------------------------*/
+document.getElementById('presetDefault').addEventListener('click', ()=>{ loadAvatarFromObject(PRESET_DEFAULT, 'Default'); flashStatus('Loaded default preset'); });
+document.getElementById('presetBiggest').addEventListener('click', ()=>{ loadAvatarFromObject(PRESET_BIGGEST, 'Biggest'); flashStatus('Loaded biggest preset'); });
+document.getElementById('presetSmallest').addEventListener('click', ()=>{ loadAvatarFromObject(PRESET_SMALLEST, 'Smallest'); flashStatus('Loaded smallest preset'); });
+
+/* --------------------------------- Theme -----------------------------------*/
+const themeBtn = document.getElementById('btnTheme');
+function setTheme(light){
+  document.documentElement.classList.toggle('light', light);
+  themeBtn.textContent = light ? '☀️' : '🌙';
+}
+setTheme(false);
+themeBtn.addEventListener('click', ()=>{
+  setTheme(!document.documentElement.classList.contains('light'));
+});
+
+/* ------------------------------ Panels (mobile) -----------------------------*/
+const leftPanel = document.getElementById('leftPanel');
+const rightPanel = document.getElementById('rightPanel');
+const scrim = document.getElementById('scrim');
+function closePanels(){ leftPanel.classList.remove('open'); rightPanel.classList.remove('open'); scrim.classList.remove('show'); }
+document.getElementById('panelToggleLeft').addEventListener('click', ()=>{
+  const willOpen = !leftPanel.classList.contains('open');
+  closePanels();
+  if(willOpen){ leftPanel.classList.add('open'); scrim.classList.add('show'); }
+});
+document.getElementById('panelToggleRight').addEventListener('click', ()=>{
+  const willOpen = !rightPanel.classList.contains('open');
+  closePanels();
+  if(willOpen){ rightPanel.classList.add('open'); scrim.classList.add('show'); }
+});
+scrim.addEventListener('click', closePanels);
+
+/* --------------------------------- Boot ------------------------------------*/
+function animate(){
+  requestAnimationFrame(animate);
+  if(dirtyParts.size){
+    dirtyParts.forEach(p => buildPartMesh(p));
+    dirtyParts.clear();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+function boot(){
+  debugLog('THREE r' + THREE.REVISION + ' loaded, WebGL context: ' + (renderer.getContext() ? 'OK' : 'MISSING'), 'ok');
+  resizeRenderer();
+  const canvasRect = host.getBoundingClientRect();
+  debugLog('Canvas size: ' + Math.round(canvasRect.width) + 'x' + Math.round(canvasRect.height));
+  loadAvatarFromObject(PRESET_DEFAULT, 'Default');
+  PARTS.forEach(p=>{
+    const map = partColorMeshes[p];
+    let voxelCount = 0;
+    if(map) map.forEach(mesh => voxelCount += mesh.count);
+    debugLog(p + ' mesh voxels: ' + voxelCount + ' across ' + (map?map.size:0) + ' color group(s)', map ? 'ok' : 'err');
+  });
+  updateStatus();
+  animate();
+  debugLog('Boot complete. Click/tap the model to test.', 'ok');
+}
+try{
+  if(typeof THREE === 'undefined'){
+    throw new Error('THREE is not defined — Three.js failed to load from the CDN before this script ran.');
+  }
+  if(typeof THREE.OrbitControls === 'undefined'){
+    throw new Error('THREE.OrbitControls is not defined — OrbitControls.js failed to load from the CDN before this script ran.');
+  }
+  boot();
+}catch(err){
+  debugLog('FATAL: ' + err.message, 'err');
+  const box = document.getElementById('fatalError');
+  const msg = document.getElementById('fatalErrorMsg');
+  msg.textContent += (msg.textContent ? '\n\n---\n\n' : '') + 'Startup failed: ' + err.message + (err.stack ? ('\n\n' + err.stack) : '');
+  box.classList.add('show');
+}
+</script>
+</body>
+</html>
